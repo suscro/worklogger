@@ -11,6 +11,7 @@ gi.require_version('AppIndicator3', '0.1')
 from gi.repository import Gtk
 from gi.repository import AppIndicator3 as AppIndicator
 from os.path import expanduser
+from datetime import timedelta
 
 STORAGE_DIR = ".worklog"
 
@@ -25,7 +26,7 @@ class Worklogger:
     def __init__(self):
         self.indicator = Indicator(self.start, self.stop, self.quit)
         self.logger = Logger()
-        self.timer = Timer(self.logger.ping)
+        self.timer = Timer(self.ping)
 
     def run(self):
         ask = AskWindow()
@@ -38,8 +39,13 @@ class Worklogger:
         self.indicator.show()
 
     def start(self):
+        self.logger.start()
         self.indicator.start()
         self.timer.start()
+
+    def ping(self):
+        self.logger.ping()
+        self.indicator.label(str(timedelta(minutes=self.logger.workedToday()))[:-3])
 
     def stop(self):
         self.indicator.stop()
@@ -77,6 +83,9 @@ class Indicator:
     def start(self):
         self.item.replace('Stop', self._stop)
         self.indicator.set_icon(STARTED_ICON)
+
+    def label(self, label):
+        self.indicator.set_label(label, label)
 
     def stop(self):
         self.item.replace('Start', self._start)
@@ -134,22 +143,47 @@ class Logger:
 
     def __init__(self):
         self.last = None
+        self.workedMinutes = 0
+
+    def start(self):
+        now = datetime.datetime.now()
+        dir_name = self._dir_name(now)
+        file_name = self._file_name(dir_name, now)
+        if not os.path.exists(file_name):
+            self.workedMinutes = 0
+        else:
+            day_file = open(file_name, 'r')
+            lines = set()
+            for line in day_file:
+                lines.add(line)
+            self.workedMinutes = len(lines)
+
+    def workedToday(self):
+        return self.workedMinutes
 
     def ping(self):
         now = datetime.datetime.now().replace(second = 0, microsecond = 0)
         if (self.last is None) or (self.last != now):
             self.last = now
-            self.log()
+            self.workedMinutes = self.workedMinutes + 1
+            self._log()
 
-    def log(self):
-        dir_name = "/".join((STORAGE_PATH, str(self.last.year), str(self.last.month))) + "/"
-        self.make_path(dir_name)
+    def _log(self):
+        dir_name = self._dir_name(self.last)
 
-        log_file = open(dir_name + str(self.last.day), "a+")
+        log_file = open(self._file_name(dir_name, self.last), "a+")
         log_file.write(self.last.strftime("%H:%M\n"))
         log_file.close()
 
-    def make_path(self, dir_name):
+    def _file_name(self, dir_name, date):
+        return dir_name + str(date.day)
+
+    def _dir_name(self, date):
+        dir_name = "/".join((STORAGE_PATH, str(date.year), str(date.month))) + "/"
+        self._make_path(dir_name)
+        return dir_name
+
+    def _make_path(self, dir_name):
         folder = os.path.dirname(dir_name)
         if not os.path.exists(folder):
             os.makedirs(folder)
