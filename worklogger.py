@@ -36,6 +36,8 @@ class Worklogger:
         else:
             self.stop()
 
+        self.logger.start()
+        self._update()
         self.indicator.show()
 
     def start(self):
@@ -45,6 +47,9 @@ class Worklogger:
 
     def ping(self):
         self.logger.ping()
+        self._update()
+
+    def _update(self):
         self.indicator.label(str(timedelta(minutes=self.logger.workedToday()))[:-3])
 
     def stop(self):
@@ -154,9 +159,13 @@ class Logger:
         else:
             day_file = open(file_name, 'r')
             lines = set()
+            last = None
             for line in day_file:
                 lines.add(line)
+                last = line
             self.workedMinutes = len(lines)
+            if not last is None:
+                self.last = datetime.datetime(now.year, now.month, now.day, int(last[0:2]), int(last[3:5]))
 
     def workedToday(self):
         return self.workedMinutes
