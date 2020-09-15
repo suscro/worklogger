@@ -103,14 +103,14 @@ class Indicator:
 
     def start(self):
         self.item.replace('Stop', self._stop)
-        self.indicator.set_icon(STARTED_ICON)
+        self.indicator.set_icon_full(STARTED_ICON, "Started")
 
     def label(self, label):
         self.indicator.set_label(label, label)
 
     def stop(self):
         self.item.replace('Start', self._start)
-        self.indicator.set_icon(STOPPED_ICON)
+        self.indicator.set_icon_full(STOPPED_ICON, "Stopped")
 
     def _start(self, source):
         self.start_callback()
